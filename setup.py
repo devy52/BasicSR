@@ -150,9 +150,9 @@ if __name__ == '__main__':
         description='Open Source Image and Video Super-Resolution Toolbox',
         long_description=readme(),
         long_description_content_type='text/markdown',
-        Original_author='Xintao Wang',
-        Forked_author='devy52'
-        #author_email='xintao.wang@outlook.com',
+        author='Xintao Wang',
+        maintainer='devy52'
+        author_email='xintao.wang@outlook.com',
         keywords='computer vision, restoration, super resolution',
         url='https://github.com/devy52/BasicSR',
         include_package_data=True,
