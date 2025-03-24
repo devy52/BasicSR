@@ -36,12 +36,15 @@ class Registry():
         self._obj_map = {}
 
     def _do_register(self, name, obj, suffix=None):
-        if isinstance(suffix, str):
-            name = name + '_' + suffix
+    if isinstance(suffix, str):
+        name = name + '_' + suffix
 
-        assert (name not in self._obj_map), (f"An object named '{name}' was already registered "
-                                             f"in '{self._name}' registry!")
-        self._obj_map[name] = obj
+    if name in self._obj_map:
+        print(f"[INFO] Architecture '{name}' is already registered in '{self._name}' registry. Skipping re-registration.")
+        return  # Skip re-registering the same object
+    
+    self._obj_map[name] = obj
+    print(f"[INFO] Architecture '{name}' has been successfully registered in '{self._name}' registry.")
 
     def register(self, obj=None, suffix=None):
         """
