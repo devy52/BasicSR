@@ -228,7 +228,7 @@ def _ssim_pth(img, img2):
 
     cs_map = (2 * sigma12 + c2) / (sigma1_sq + sigma2_sq + c2)
     ssim_map = ((2 * mu1_mu2 + c1) / (mu1_sq + mu2_sq + c1)) * cs_map
-    return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])
+    return ssim_map.mean([1, 2, 3])
 
 def prepare_for_ssim(img, k):
     import torch
