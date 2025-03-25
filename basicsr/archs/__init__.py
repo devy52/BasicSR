@@ -21,12 +21,12 @@ def build_network(opt):
     net = ARCH_REGISTRY.get(network_type)(**opt)
     logger = get_root_logger()
     logger.info(f'Network [{net.__class__.__name__}] is created.')
-    return netreturn net
+    return net
 
 def define_network(opt):
     network_type = opt.pop('type')
     net = dynamic_instantiation(_arch_modules, network_type, opt)
-    return netreturn net
+    return net
 
 def dynamic_instantiation(modules, cls_type, opt):
     """Dynamically instantiate class.
