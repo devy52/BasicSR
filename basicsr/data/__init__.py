@@ -21,13 +21,6 @@ dataset_filenames = [osp.splitext(osp.basename(v))[0] for v in scandir(data_fold
 _dataset_modules = [f'basicsr.data.{file_name}' for file_name in dataset_filenames]
 
 def build_dataset(dataset_opt):
-    """Build dataset from options.
-
-    Args:
-        dataset_opt (dict): Configuration for dataset. It must contain:
-            name (str): Dataset name.
-            type (str): Dataset type.
-    """
     dataset_opt = deepcopy(dataset_opt)
     dataset = DATASET_REGISTRY.get(dataset_opt['type'])(dataset_opt)
     logger = get_root_logger()
@@ -60,10 +53,8 @@ def build_dataloader(dataset, dataset_opt, num_gpu=1, dist=False, sampler=None, 
         dataloader_args = dict(dataset=dataset, batch_size=1, shuffle=False, num_workers=0)
     else:
         raise ValueError(f"Wrong dataset phase: {phase}. Supported ones are 'train', 'val' and 'test'.")
-
     dataloader_args['pin_memory'] = dataset_opt.get('pin_memory', False)
     dataloader_args['persistent_workers'] = dataset_opt.get('persistent_workers', False)
-
     prefetch_mode = dataset_opt.get('prefetch_mode')
     if prefetch_mode == 'cpu':
         num_prefetch_queue = dataset_opt.get('num_prefetch_queue', 1)
@@ -77,3 +68,14 @@ def worker_init_fn(worker_id, num_workers, rank, seed):
     worker_seed = num_workers * rank + worker_id + seed
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+
+# Register any explicitly imported dataset
+def __getattr__(name):
+    if name in [f.replace('_dataset', '') for f in dataset_filenames]:
+        module_name = f'basicsr.data.{name}_dataset'
+        module = importlib.import_module(module_name)
+        cls_ = getattr(module, name, None)
+        if cls_ is not None:
+            return cls_
+        raise AttributeError(f"'{name}' not found in {module_name}")
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
