@@ -37,6 +37,12 @@ __all__ = [
     'scandir',
     'check_resume',
     'sizeof_fmt',
+    'padding',
+    'padding_DP',
+    'imfrombytesDP',
+    'create_lmdb_for_reds',
+    'create_lmdb_for_gopro',
+    'create_lmdb_for_rain13k',
     # diffjpeg
     'DiffJPEG',
     # img_process_util
