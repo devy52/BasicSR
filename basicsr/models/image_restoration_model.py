@@ -9,7 +9,7 @@ from basicsr.archs import define_network
 from basicsr.base_model import BaseModel
 from basicsr.utils import get_root_logger, imwrite, tensor2img
 
-loss_module = importlib.import_module('basicsr.models.losses')
+loss_module = importlib.import_module('basicsr.losses')
 metric_module = importlib.import_module('basicsr.metrics')
 
 import os
@@ -117,7 +117,7 @@ class ImageCleanModel(BaseModel):
         optim_params = []
 
         for k, v in self.net_g.named_parameters():
-            if v.requires_grad:
+            if v.requires_grad:if v.requires_grad:if v.requires_grad:
                 optim_params.append(v)
             else:
                 logger = get_root_logger()
