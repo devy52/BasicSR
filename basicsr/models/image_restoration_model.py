@@ -117,7 +117,7 @@ class ImageCleanModel(BaseModel):
         optim_params = []
 
         for k, v in self.net_g.named_parameters():
-            if v.requires_grad:if v.requires_grad:if v.requires_grad:
+            if v.requires_grad:
                 optim_params.append(v)
             else:
                 logger = get_root_logger()
