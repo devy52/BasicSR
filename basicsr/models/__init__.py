@@ -1,3 +1,4 @@
+# basicsr/models/__init__.py
 import importlib
 from copy import deepcopy
 from os import path as osp
@@ -7,13 +8,10 @@ from basicsr.utils.registry import MODEL_REGISTRY
 
 __all__ = ['build_model']
 
-# automatically scan and import model modules for registry
-# scan all the files under the 'models' folder and collect files ending with '_model.py'
+# List module names without importing them
 model_folder = osp.dirname(osp.abspath(__file__))
 model_filenames = [osp.splitext(osp.basename(v))[0] for v in scandir(model_folder) if v.endswith('_model.py')]
-# import all the model modules
-_model_modules = [importlib.import_module(f'basicsr.models.{file_name}') for file_name in model_filenames]
-
+_model_modules = [f'basicsr.models.{file_name}' for file_name in model_filenames]
 
 def build_model(opt):
     """Build model from options.
@@ -27,3 +25,13 @@ def build_model(opt):
     logger = get_root_logger()
     logger.info(f'Model [{model.__class__.__name__}] is created.')
     return model
+
+def dynamic_instantiation(modules, cls_type, opt):
+    for module_name in modules:
+        module = importlib.import_module(module_name)
+        cls_ = getattr(module, cls_type, None)
+        if cls_ is not None:
+            break
+    if cls_ is None:
+        raise ValueError(f'{cls_type} is not found.')
+    return cls_(**opt)
