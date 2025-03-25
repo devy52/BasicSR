@@ -4,7 +4,7 @@ import torch
 from collections import OrderedDict
 from copy import deepcopy
 from torch.nn.parallel import DataParallel, DistributedDataParallel
-
+import logging
 from basicsr.models import lr_scheduler as lr_scheduler
 from basicsr.utils import get_root_logger
 from basicsr.utils.dist_util import master_only
@@ -359,6 +359,75 @@ class BaseModel():
         resume_schedulers = resume_state['schedulers']
         assert len(resume_optimizers) == len(self.optimizers), 'Wrong lengths of optimizers'
         assert len(resume_schedulers) == len(self.schedulers), 'Wrong lengths of schedulers'
+        for i, o in enumerate(resume_optimizers):
+            self.optimizers[i].load_state_dict(o)
+        for i, s in enumerate(resume_schedulers):
+            self.schedulers[i].load_state_dict(s)
+
+    def reduce_loss_dict(self, loss_dict):
+        """reduce loss dict.
+
+        In distributed training, it averages the losses among different GPUs .
+
+        Args:
+            loss_dict (OrderedDict): Loss dict.
+        """
+        with torch.no_grad():
+            if self.opt['dist']:
+                keys = []
+                losses = []
+                for name, value in loss_dict.items():
+                    keys.append(name)
+                    losses.append(value)
+                losses = torch.stack(losses, 0)
+                torch.distributed.reduce(losses, dst=0)
+                if self.opt['rank'] == 0:
+                    losses /= self.opt['world_size']
+                loss_dict = {key: loss for key, loss in zip(keys, losses)}
+
+            log_dict = OrderedDict()
+            for name, value in loss_dict.items():
+                log_dict[name] = value.mean().item()
+
+            return log_dict
+
+    @master_only
+    def save_training_state(self, epoch, current_iter):
+        """Save training states during training, which will be used for
+        resuming.
+
+        Args:
+            epoch (int): Current epoch.
+            current_iter (int): Current iteration.
+        """
+        if current_iter != -1:
+            state = {
+                'epoch': epoch,
+                'iter': current_iter,
+                'optimizers': [],
+                'schedulers': []
+            }
+            for o in self.optimizers:
+                state['optimizers'].append(o.state_dict())
+            for s in self.schedulers:
+                state['schedulers'].append(s.state_dict())
+            save_filename = f'{current_iter}.state'
+            save_path = os.path.join(self.opt['path']['training_states'],
+                                     save_filename)
+            torch.save(state, save_path)
+
+    def resume_training(self, resume_state):
+        """Reload the optimizers and schedulers for resumed training.
+
+        Args:
+            resume_state (dict): Resume state.
+        """
+        resume_optimizers = resume_state['optimizers']
+        resume_schedulers = resume_state['schedulers']
+        assert len(resume_optimizers) == len(
+            self.optimizers), 'Wrong lengths of optimizers'
+        assert len(resume_schedulers) == len(
+            self.schedulers), 'Wrong lengths of schedulers'
         for i, o in enumerate(resume_optimizers):
             self.optimizers[i].load_state_dict(o)
         for i, s in enumerate(resume_schedulers):
