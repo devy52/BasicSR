@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
-
+import skimage.metrics
 from basicsr.metrics.metric_util import reorder_image, to_y_channel
 from basicsr.utils.color_util import rgb2ycbcr_pt
 from basicsr.utils.registry import METRIC_REGISTRY
@@ -228,4 +228,127 @@ def _ssim_pth(img, img2):
 
     cs_map = (2 * sigma12 + c2) / (sigma1_sq + sigma2_sq + c2)
     ssim_map = ((2 * mu1_mu2 + c1) / (mu1_sq + mu2_sq + c1)) * cs_map
-    return ssim_map.mean([1, 2, 3])
+    return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])return ssim_map.mean([1, 2, 3])
+
+def prepare_for_ssim(img, k):
+    import torch
+    with torch.no_grad():
+        img = torch.from_numpy(img).unsqueeze(0).unsqueeze(0).float()
+        conv = torch.nn.Conv2d(1, 1, k, stride=1, padding=k//2, padding_mode='reflect')
+        conv.weight.requires_grad = False
+        conv.weight[:, :, :, :] = 1. / (k * k)
+
+        img = conv(img)
+
+        img = img.squeeze(0).squeeze(0)
+        img = img[0::k, 0::k]
+    return img.detach().cpu().numpy()
+
+def prepare_for_ssim_rgb(img, k):
+    import torch
+    with torch.no_grad():
+        img = torch.from_numpy(img).float() #HxWx3
+
+        conv = torch.nn.Conv2d(1, 1, k, stride=1, padding=k // 2, padding_mode='reflect')
+        conv.weight.requires_grad = False
+        conv.weight[:, :, :, :] = 1. / (k * k)
+
+        new_img = []
+
+        for i in range(3):
+            new_img.append(conv(img[:, :, i].unsqueeze(0).unsqueeze(0)).squeeze(0).squeeze(0)[0::k, 0::k])
+
+    return torch.stack(new_img, dim=2).detach().cpu().numpy()
+
+def _3d_gaussian_calculator(img, conv3d):
+    out = conv3d(img.unsqueeze(0).unsqueeze(0)).squeeze(0).squeeze(0)
+    return out
+
+def _generate_3d_gaussian_kernel():
+    kernel = cv2.getGaussianKernel(11, 1.5)
+    window = np.outer(kernel, kernel.transpose())
+    kernel_3 = cv2.getGaussianKernel(11, 1.5)
+    kernel = torch.tensor(np.stack([window * k for k in kernel_3], axis=0))
+    conv3d = torch.nn.Conv3d(1, 1, (11, 11, 11), stride=1, padding=(5, 5, 5), bias=False, padding_mode='replicate')
+    conv3d.weight.requires_grad = False
+    conv3d.weight[0, 0, :, :, :] = kernel
+    return conv3d
+
+def _ssim_3d(img1, img2, max_value):
+    assert len(img1.shape) == 3 and len(img2.shape) == 3
+    """Calculate SSIM (structural similarity) for one channel images.
+
+    It is called by func:`calculate_ssim`.
+
+    Args:
+        img1 (ndarray): Images with range [0, 255]/[0, 1] with order 'HWC'.
+        img2 (ndarray): Images with range [0, 255]/[0, 1] with order 'HWC'.
+
+    Returns:
+        float: ssim result.
+    """
+    C1 = (0.01 * max_value) ** 2
+    C2 = (0.03 * max_value) ** 2
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+
+    kernel = _generate_3d_gaussian_kernel().cuda()
+
+    img1 = torch.tensor(img1).float().cuda()
+    img2 = torch.tensor(img2).float().cuda()
+
+
+    mu1 = _3d_gaussian_calculator(img1, kernel)
+    mu2 = _3d_gaussian_calculator(img2, kernel)
+
+    mu1_sq = mu1 ** 2
+    mu2_sq = mu2 ** 2
+    mu1_mu2 = mu1 * mu2
+    sigma1_sq = _3d_gaussian_calculator(img1 ** 2, kernel) - mu1_sq
+    sigma2_sq = _3d_gaussian_calculator(img2 ** 2, kernel) - mu2_sq
+    sigma12 = _3d_gaussian_calculator(img1*img2, kernel) - mu1_mu2
+
+    ssim_map = ((2 * mu1_mu2 + C1) *
+                (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) *
+                                       (sigma1_sq + sigma2_sq + C2))
+    return float(ssim_map.mean())
+
+def _ssim_cly(img1, img2):
+    assert len(img1.shape) == 2 and len(img2.shape) == 2
+    """Calculate SSIM (structural similarity) for one channel images.
+
+    It is called by func:`calculate_ssim`.
+
+    Args:
+        img1 (ndarray): Images with range [0, 255] with order 'HWC'.
+        img2 (ndarray): Images with range [0, 255] with order 'HWC'.
+
+    Returns:
+        float: ssim result.
+    """
+
+    C1 = (0.01 * 255)**2
+    C2 = (0.03 * 255)**2
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+
+    kernel = cv2.getGaussianKernel(11, 1.5)
+    # print(kernel)
+    window = np.outer(kernel, kernel.transpose())
+
+    bt = cv2.BORDER_REPLICATE
+
+    mu1 = cv2.filter2D(img1, -1, window, borderType=bt)
+    mu2 = cv2.filter2D(img2, -1, window,borderType=bt)
+
+    mu1_sq = mu1**2
+    mu2_sq = mu2**2
+    mu1_mu2 = mu1 * mu2
+    sigma1_sq = cv2.filter2D(img1**2, -1, window, borderType=bt) - mu1_sq
+    sigma2_sq = cv2.filter2D(img2**2, -1, window, borderType=bt) - mu2_sq
+    sigma12 = cv2.filter2D(img1 * img2, -1, window, borderType=bt) - mu1_mu2
+
+    ssim_map = ((2 * mu1_mu2 + C1) *
+                (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) *
+                                       (sigma1_sq + sigma2_sq + C2))
+    return ssim_map.mean()
