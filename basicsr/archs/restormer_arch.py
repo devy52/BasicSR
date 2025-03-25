@@ -10,6 +10,7 @@ from pdb import set_trace as stx
 import numbers
 
 from einops import rearrange
+from basicsr.utils.registry import ARCH_REGISTRY
 
 
 
