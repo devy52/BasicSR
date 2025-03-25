@@ -1,11 +1,10 @@
 import math
 import random
 import torch
-from torch import nn
-from torch.nn import functional as F
-
 from basicsr.ops.fused_act import FusedLeakyReLU, fused_leaky_relu
 from basicsr.utils.registry import ARCH_REGISTRY
+from torch import nn
+from torch.nn import functional as F
 
 
 class NormStyleCode(nn.Module):
@@ -271,7 +270,7 @@ class ConstantInput(nn.Module):
         return out
 
 
-@ARCH_REGISTRY.register(suffix='basicsr')
+@ARCH_REGISTRY.register()
 class StyleGAN2GeneratorBilinear(nn.Module):
     """StyleGAN2 Generator.
 
