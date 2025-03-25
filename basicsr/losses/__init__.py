@@ -7,6 +7,7 @@ from basicsr.utils import get_root_logger, scandir
 from basicsr.utils.registry import LOSS_REGISTRY
 
 __all__ = ['build_loss']
+__all__ = ['build_loss']
 
 # List module names without importing them
 loss_folder = osp.dirname(osp.abspath(__file__))
@@ -14,12 +15,6 @@ loss_filenames = [osp.splitext(osp.basename(v))[0] for v in scandir(loss_folder)
 _loss_modules = [f'basicsr.losses.{file_name}' for file_name in loss_filenames]
 
 def build_loss(opt):
-    """Build loss from options.
-
-    Args:
-        opt (dict): Configuration. It must contain:
-            type (str): Loss type.
-    """
     opt = deepcopy(opt)
     loss = LOSS_REGISTRY.get(opt['type'])(**opt)
     logger = get_root_logger()
@@ -35,3 +30,14 @@ def dynamic_instantiation(modules, cls_type, opt):
     if cls_ is None:
         raise ValueError(f'{cls_type} is not found.')
     return cls_(**opt)
+
+# Register any explicitly imported loss
+def __getattr__(name):
+    if name in [f.replace('_loss', '') for f in loss_filenames]:
+        module_name = f'basicsr.losses.{name}_loss'
+        module = importlib.import_module(module_name)
+        cls_ = getattr(module, name, None)
+        if cls_ is not None:
+            return cls_
+        raise AttributeError(f"'{name}' not found in {module_name}")
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
