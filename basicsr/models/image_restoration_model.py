@@ -6,7 +6,7 @@ from os import path as osp
 from tqdm import tqdm
 
 from basicsr.archs import define_network
-from basicsr.base_model import BaseModel
+from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, imwrite, tensor2img
 
 loss_module = importlib.import_module('basicsr.losses')
