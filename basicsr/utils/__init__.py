@@ -41,7 +41,7 @@ __all__ = [
     'sizeof_fmt',
     #'padding',
     #'padding_DP',
-    'imfrombytesDP',
+    #'imfrombytesDP',
     'create_lmdb_for_reds',
     'create_lmdb_for_gopro',
     'create_lmdb_for_rain13k',
