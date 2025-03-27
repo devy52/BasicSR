@@ -886,6 +886,7 @@ class SwinIR(nn.Module):
         return {'relative_position_bias_table'}
 
     def check_image_size(self, x):
+        import torch.nn.functional as F
         _, _, h, w = x.size()
         mod_pad_h = (self.window_size - h % self.window_size) % self.window_size
         mod_pad_w = (self.window_size - w % self.window_size) % self.window_size
