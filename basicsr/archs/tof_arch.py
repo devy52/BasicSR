@@ -1,6 +1,6 @@
 import torch
 from torch import nn as nn
-from torch.nn import functional as F
+import torch.nn.functional as F
 
 from basicsr.utils.registry import ARCH_REGISTRY
 from .arch_util import flow_warp
